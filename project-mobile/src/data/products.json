@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "name": "Salted Chips",
+    "price": 45,
+    "image": "https://via.placeholder.com/150"
+  },
+  {
+    "id": "2",
+    "name": "Spicy Sauce",
+    "price": 80,
+    "image": "https://via.placeholder.com/150"
+  },
+  {
+    "id": "3",
+    "name": "Craft Beer",
+    "price": 120,
+    "image": "https://via.placeholder.com/150"
+  }
+]
