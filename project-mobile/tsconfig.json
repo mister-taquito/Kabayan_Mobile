@@ -1,6 +1,20 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+
+    // ← baseUrl "." makes "src" the root for all relative imports 
+    "baseUrl": ".",
+
+    // ← only needed if you want alias imports.
+    // You can remove this section if you stick to relative paths (../components/...)
+    "paths": {
+      "@components/*": ["src/components/*"],
+      "@context/*":    ["src/context/*"]
+    }
+  },
+  "include": [
+    "src/**/*",    // ← make sure TS actually scans all your .ts/.tsx under src
+    "env.d.ts"
+  ]
 }

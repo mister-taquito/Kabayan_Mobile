@@ -1,20 +1,18 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { registerRootComponent } from 'expo';
+// App.tsx
+
 import React from 'react';
-import AppNavigator from './src/navigation/AppNavigator';
+import { StatusBar }      from 'expo-status-bar';
+import { NavigationContainer } from '@react-navigation/native';
+import AppNavigator       from './src/navigation/AppNavigator';
+import { CartProvider }   from './src/context/CartContext';
 
-const App = () => {
-  return <AppNavigator />;
-};
-
-export default registerRootComponent(App);
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <NavigationContainer>
+      <CartProvider>
+        <StatusBar style="auto" />
+        <AppNavigator />
+      </CartProvider>
+    </NavigationContainer>
+  );
+}
