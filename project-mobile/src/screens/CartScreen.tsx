@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { useCart, CartItem } from '../context/CartContext';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabScreenProps }  from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootTabParamList, RootStackParamList } from '../navigation/AppNavigator';
+
+import { Colors, Typography, Spacing, CommonStyles } from '../styles/Theme';
 
 type CartTabProps = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList, 'Cart'>,
@@ -32,22 +34,33 @@ export default function CartScreen({ navigation }: CartTabProps) {
     0
   );
 
-  // 1) Empty‐state placeholder
+  //
+  // 1) Empty‐state
+  //
   if (items.length === 0) {
     return (
-      <SafeAreaView style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Your cart is empty.</Text>
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <Text style={CommonStyles.emptyText}>
+          Your cart is empty.
+        </Text>
+
+        {/* “Continue Shopping” now uses the theme’s primaryButton styles,
+            including horizontal padding from Theme.ts */}
         <TouchableOpacity
-          style={styles.continueButton}
+          style={CommonStyles.primaryButton}
           onPress={() => navigation.navigate('Home')}
         >
-          <Text style={styles.continueButtonText}>Continue Shopping</Text>
+          <Text style={CommonStyles.primaryButtonText}>
+            Continue Shopping
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  // 2) Render each line item with quantity controls
+  //
+  // 2) Render each cart item
+  //
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemRow}>
       <View style={styles.itemInfo}>
@@ -89,8 +102,7 @@ export default function CartScreen({ navigation }: CartTabProps) {
           </Text>
         </TouchableOpacity>
 
-        {/* Space between “–” and “+” */}
-        <View style={{ width: 12 }} />
+        <View style={{ width: Spacing.sm * 1.5 }} />  {/* 12px */}
 
         <TouchableOpacity
           style={[styles.controlButton, isUpdating && styles.controlButtonDisabled]}
@@ -112,8 +124,7 @@ export default function CartScreen({ navigation }: CartTabProps) {
           </Text>
         </TouchableOpacity>
 
-        {/* Space between “+” and “Remove” */}
-        <View style={{ width: 12 }} />
+        <View style={{ width: Spacing.sm * 1.5 }} />  {/* 12px */}
 
         <TouchableOpacity
           style={styles.removeButton}
@@ -140,8 +151,8 @@ export default function CartScreen({ navigation }: CartTabProps) {
     <SafeAreaView style={styles.container}>
       {/* 3) Error banner */}
       {error && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={CommonStyles.errorBanner}>
+          <Text style={CommonStyles.errorText}>{error}</Text>
         </View>
       )}
 
@@ -154,29 +165,31 @@ export default function CartScreen({ navigation }: CartTabProps) {
         ListFooterComponent={<View style={{ height: 1 }} />}
       />
 
-      {/* 5) Subtotal + “Proceed to Checkout” footer */}
+      {/* 5) Footer */}
       <View style={styles.footer}>
-        <Text style={styles.subtotalText}>
+        <Text style={[Typography.h2, { color: Colors.textDark, marginBottom: Spacing.sm }]}>
           Subtotal: {subtotal.toFixed(2)} {items[0]?.price.currencyCode}
         </Text>
         {!checkoutUrl && (
-          <Text style={styles.warningText}>
+          <Text style={[Typography.label, { color: Colors.error, marginBottom: Spacing.sm }]}>
             Add at least one item to enable checkout.
           </Text>
         )}
         <TouchableOpacity
           style={[
-            styles.checkoutButton,
-            (!checkoutUrl || isUpdating) && styles.checkoutButtonDisabled,
+            CommonStyles.primaryButton,
+            (!checkoutUrl || isUpdating) && CommonStyles.primaryButtonDisabled,
           ]}
           disabled={!checkoutUrl || isUpdating}
-          onPress={() => navigation.navigate('Checkout')}
+          onPress={() => navigation.getParent()?.navigate('Checkout')}
         >
-          <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
+          <Text style={CommonStyles.primaryButtonText}>
+            Proceed to Checkout
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* 6) Overlay spinner while updating */}
+      {/* 6) Overlay spinner */}
       {isUpdating && (
         <View style={styles.updatingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
@@ -186,171 +199,94 @@ export default function CartScreen({ navigation }: CartTabProps) {
   );
 }
 
-//
-// Styles
-//
-const ORANGE = '#F97316';
-const GRAY_LIGHT = '#F5F5F5';
-const GRAY_BORDER = '#E5E5E5';
-const TEXT_DARK = '#1F2937';
-const TEXT_MUTED = '#6B7280';
-const ERROR_RED = '#DC2626';
-
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+    flex:            1,
+    backgroundColor: Colors.background,
   },
   listContent: {
-    flexGrow: 0,         // allow the list to shrink‐wrap its items
-    paddingBottom: 100,  // leave vertical space for footer
+    flexGrow:      0,            // shrink‐wrap items
+    paddingBottom: Spacing.xl,   // leave room for footer
   },
 
   //
-  // Empty‐state
-  //
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: TEXT_MUTED,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  continueButton: {
-    backgroundColor: ORANGE,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-  },
-  continueButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  //
-  // Error banner
-  //
-  errorBanner: {
-    backgroundColor: '#FEF2F2', // very light red
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#FEE2E2',
-  },
-  errorText: {
-    color: ERROR_RED,
-    textAlign: 'center',
-  },
-
-  //
-  // Item row
+  // Item Row
   //
   itemRow: {
-    flexDirection: 'row',
-    paddingVertical: 8,   // slightly reduced padding
-    paddingHorizontal: 16,
+    flexDirection:     'row',
+    paddingVertical:   Spacing.sm * 1.5,  // 12px
+    paddingHorizontal: Spacing.md,        // 16px
     borderBottomWidth: 1,
-    borderBottomColor: GRAY_BORDER,
-    alignItems: 'center',
+    borderBottomColor: Colors.border,
+    alignItems:        'center',
   },
   itemInfo: {
     flex: 1,
   },
   itemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: TEXT_DARK,
-    marginBottom: 2,  // smaller gap
+    ...Typography.body,
+    fontWeight:   '600',
+    color:        Colors.textDark,
+    marginBottom: Spacing.xs,  // 4px
   },
   itemDetail: {
-    fontSize: 14,
-    color: TEXT_MUTED,
+    ...Typography.label,
+    color: Colors.textMuted,
   },
   itemControls: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems:    'center',
   },
   controlButton: {
-    backgroundColor: ORANGE,
-    borderRadius: 20,
-    width: 32,     // corrected (no stray “thirtytwo”)
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius:    20,
+    width:           32,
+    height:          32,
+    justifyContent:  'center',
+    alignItems:      'center',
   },
   controlButtonDisabled: {
-    backgroundColor: '#FDE6D0', // lighter orange
+    backgroundColor: Colors.primaryLight,
   },
   controlButtonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
+    color:      '#FFFFFF',
+    fontSize:   20,
     fontWeight: '600',
     lineHeight: 20,
   },
   textDisabled: {
-    color: '#F9C2A3', // pale text
+    color: Colors.primaryLight,
   },
   removeButton: {
-    marginLeft: 12, // same horizontal spacing as between “–” and “+”
+    marginLeft: Spacing.sm * 1.5, // 12px
   },
   removeButtonText: {
-    color: ERROR_RED,
-    fontSize: 14,
+    ...Typography.label,
+    color:      Colors.error,
     fontWeight: '600',
   },
 
   //
-  // Footer (sticky at bottom)
+  // Footer
   //
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: GRAY_BORDER,
-    backgroundColor: GRAY_LIGHT,
-  },
-  subtotalText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: TEXT_DARK,
-    marginBottom: 8,
-  },
-  warningText: {
-    fontSize: 14,
-    color: ERROR_RED,
-    marginBottom: 8,
-  },
-  checkoutButton: {
-    backgroundColor: ORANGE,
-    paddingVertical: 14,
-    borderRadius: 30,
-    alignItems: 'center',
-  },
-  checkoutButtonDisabled: {
-    backgroundColor: '#FDE6D0',
-  },
-  checkoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    position:         'absolute',
+    bottom:           0,
+    left:             0,
+    right:            0,
+    backgroundColor:  Colors.backgroundAlt,
+    borderTopWidth:   1,
+    borderTopColor:   Colors.border,
+    padding:          Spacing.md,
   },
 
   //
-  // Updating overlay
+  // Overlay spinner
   //
   updatingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent:  'center',
+    alignItems:      'center',
   },
 });

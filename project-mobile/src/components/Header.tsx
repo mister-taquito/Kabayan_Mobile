@@ -1,22 +1,28 @@
 // src/components/Header.tsx
-import React from 'react'
+
+import React from 'react';
 import {
   View,
   Image,
   TouchableOpacity,
   Text,
   StyleSheet,
-} from 'react-native'
-import { useNavigation } from '@react-navigation/native'
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
-import { Ionicons } from '@expo/vector-icons'
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 
-import type { RootTabParamList } from '../navigation/AppNavigator'
-type HeaderNavProp = BottomTabNavigationProp<RootTabParamList, 'Home'>
+import { useCart } from '../context/CartContext';
+import type { RootTabParamList } from '../navigation/AppNavigator';
+
+type HeaderNavProp = BottomTabNavigationProp<RootTabParamList, 'Home'>;
 
 export const Header: React.FC = () => {
-  const navigation = useNavigation<HeaderNavProp>()
-  const cartCount = 0  // stub
+  const navigation = useNavigation<HeaderNavProp>();
+  const { items } = useCart();
+
+  // Sum up total quantity across all cart items
+  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <View style={styles.container}>
@@ -54,13 +60,14 @@ export const Header: React.FC = () => {
         </TouchableOpacity>
       </View>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     height: 56,
     backgroundColor: '#E76F51',
+    justifyContent: 'center', // vertically center children
   },
   leftAction: {
     position: 'absolute',
@@ -98,4 +105,4 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-})
+});

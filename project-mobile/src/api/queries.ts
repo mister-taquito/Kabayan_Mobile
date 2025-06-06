@@ -76,3 +76,31 @@ export const GET_PRODUCT_BY_HANDLE = /* GraphQL */ `
     }
   }
 `;
+
+export const GET_SEARCH_PRODUCTS = /* GraphQL */ `
+  query GetSearchProducts($query: String!) {
+    products(first: 20, query: $query) {
+      edges {
+        node {
+          id
+          title
+          handle
+          featuredImage {
+            url
+            altText
+          }
+          variants(first: 1) {
+            edges {
+              node {
+                price {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;

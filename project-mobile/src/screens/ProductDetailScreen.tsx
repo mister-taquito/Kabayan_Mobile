@@ -11,24 +11,25 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  Easing,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useCallback as useCb } from 'react';
+
 import { GET_PRODUCT_BY_HANDLE } from '../lib/shopify/queries/product';
 import { shopifyRequest } from '../lib/shopify';
 import ImageCarousel from '../components/ImageCarousel';
-// import VariantSelector from '../components/VariantSelector'; // still omitted for now
 import { useCart } from '../context/CartContext';
-
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import type { ShopifyProduct } from '../lib/shopify/types';
+
+import { Colors, Typography, Spacing, CommonStyles } from '../styles/Theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
 
 const { width } = Dimensions.get('window');
-const HORIZONTAL_PADDING = 16;
-
-// We’ll use an Animated.Value to fade in/out the “Added to Cart” message
-const TOAST_DURATION = 2000; // milliseconds
+const H_PAD = Spacing.md; // 16
 
 export default function ProductDetailScreen({ route }: Props) {
   const { handle } = route.params;
@@ -38,31 +39,14 @@ export default function ProductDetailScreen({ route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const { addToCart } = useCart();
 
-  // State and animation value for the “Added to Cart” toast
-  const [toastVisible, setToastVisible] = useState(false);
-  const toastOpacity = React.useRef(new Animated.Value(0)).current;
+  // Toast slide-up setup
+  const [showToast, setShowToast] = useState<boolean>(false);
+  const toastTranslate = React.useRef(new Animated.Value(50)).current;
 
-  const showToast = () => {
-    setToastVisible(true);
-    // Fade in quickly
-    Animated.timing(toastOpacity, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      // After TOAST_DURATION, fade out
-      setTimeout(() => {
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          setToastVisible(false);
-        });
-      }, TOAST_DURATION);
-    });
-  };
+  // Track whether this screen is focused
+  const isFocused = useIsFocused();
 
+  // Fetch product by handle
   const fetchProduct = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -88,42 +72,81 @@ export default function ProductDetailScreen({ route }: Props) {
     }
   }, [handle]);
 
+  // On mount (and whenever handle changes), fetch the product
   useEffect(() => {
     fetchProduct();
   }, [fetchProduct]);
 
+  // Prevent toast from lingering when navigating away
+  useFocusEffect(
+    useCb(() => {
+      return () => {
+        setShowToast(false);
+      };
+    }, [])
+  );
+
+  // Slide-up toast animation
+  const triggerToast = () => {
+    setShowToast(true);
+
+    toastTranslate.setValue(50);
+    Animated.timing(toastTranslate, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setTimeout(() => {
+        Animated.timing(toastTranslate, {
+          toValue: 50,
+          duration: 200,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }).start(() => setShowToast(false));
+      }, 2000);
+    });
+  };
+
+  // Loading state
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color="#F97316" />
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </SafeAreaView>
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <SafeAreaView style={styles.centeredContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchProduct}>
-          <Text style={styles.retryText}>Retry</Text>
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <Text style={CommonStyles.errorText}>{error}</Text>
+        <TouchableOpacity
+          style={[CommonStyles.primaryButton, { marginTop: Spacing.md }]}
+          onPress={fetchProduct}
+        >
+          <Text style={CommonStyles.primaryButtonText}>Retry</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
+  // If product is still null
   if (!product) {
     return (
-      <SafeAreaView style={styles.centeredContainer}>
-        <Text style={styles.errorText}>Product not found.</Text>
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <Text style={CommonStyles.errorText}>Product not found.</Text>
       </SafeAreaView>
     );
   }
 
-  // Pull fields out of the fetched product
+  // Destructure product fields
   const { title, descriptionHtml, images, variants } = product;
   const selectedVariant =
-    variants.edges.find((v) => v.node.id === selectedVariantId) || variants.edges[0];
-  const priceAmount = selectedVariant.node.price.amount;
+    variants.edges.find((v) => v.node.id === selectedVariantId) ||
+    variants.edges[0];
+  const priceAmount = parseFloat(selectedVariant.node.price.amount).toFixed(2);
   const currencyCode = selectedVariant.node.price.currencyCode;
 
   return (
@@ -132,161 +155,78 @@ export default function ProductDetailScreen({ route }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1) Image Carousel */}
+        {/* Image Carousel */}
         <View style={styles.carouselWrapper}>
           <ImageCarousel images={images.edges.map((e) => e.node.url)} />
         </View>
 
-        {/* 2) Product Info */}
+        {/* Product Info */}
         <View style={styles.infoContainer}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[Typography.h1, styles.titleText]}>{title}</Text>
 
-          {/* Price pill */}
-          <View style={styles.pricePill}>
-            <Text style={styles.pricePillText}>
-              {Number(priceAmount).toFixed(2)} {currencyCode}
+          <View style={CommonStyles.pricePill}>
+            <Text style={CommonStyles.pricePillText}>
+              {priceAmount} {currencyCode}
             </Text>
           </View>
 
-          {/* Description */}
-          <Text style={styles.description}>
+          <Text style={styles.descriptionText}>
             {descriptionHtml.replace(/<\/?[^>]+(>|$)/g, '')}
           </Text>
 
-          {/* VariantSelector (omitted) */}
-
-          {/* “Add to Cart” Button */}
           <TouchableOpacity
             activeOpacity={0.8}
-            style={styles.addToCartButton}
+            style={[CommonStyles.primaryButton, { marginTop: Spacing.lg }]}
             onPress={() => {
               if (selectedVariantId) {
                 addToCart(selectedVariantId, 1);
-                showToast(); // trigger toast animation
+                triggerToast();
               }
             }}
           >
-            <Text style={styles.addToCartButtonText}>+ Add to Cart</Text>
+            <Text style={CommonStyles.primaryButtonText}>+ Add to Cart</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/** 3) Toast message at the bottom */}
-      {toastVisible && (
-        <Animated.View style={[styles.toastContainer, { opacity: toastOpacity }]}>
-          <Text style={styles.toastText}>Added to Cart</Text>
+      {/* Toast Slide-Up Message (only when screen is focused) */}
+      {showToast && isFocused && (
+        <Animated.View
+          style={[
+            CommonStyles.toastContainer,
+            { transform: [{ translateY: toastTranslate }] },
+          ]}
+        >
+          <Text style={CommonStyles.toastText}>Product added to cart</Text>
         </Animated.View>
       )}
     </SafeAreaView>
   );
 }
 
-//
-// Styles
-//
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  centeredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: Spacing.xl, // leave room for toast
   },
-  //
-  // Carousel: reduce height slightly so the title sits a bit higher
-  //
   carouselWrapper: {
     width: width,
-    height: width * 0.75, // 4:3 ratio instead of full square
+    height: width * 0.75, // 4:3 aspect ratio
   },
-  //
-  // Info container: reduce top padding to pull content up
-  //
   infoContainer: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 16, // was 24
+    paddingHorizontal: H_PAD,
+    paddingTop: Spacing.lg,
   },
-  title: {
-    fontSize: 26, // slightly smaller so it doesn’t feel too cramped
-    fontWeight: '700',
-    marginBottom: 8, // reduce margin
-    color: '#111827',
+  titleText: {
+    marginBottom: Spacing.sm,
+    color: Colors.textDark,
   },
-  pricePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F97316',
-    borderRadius: 18,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-  pricePillText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 20,
-    color: '#374151',
-    marginBottom: 16,
-  },
-  addToCartButton: {
-    marginTop: 20,
-    backgroundColor: '#F97316',
-    borderRadius: 30,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-  },
-  addToCartButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#DC2626',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retryButton: {
-    backgroundColor: '#F97316',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  //
-  // Toast container (positioned at bottom center)
-  //
-  toastContainer: {
-    position: 'absolute',
-    bottom: 32,
-    left: HORIZONTAL_PADDING,
-    right: HORIZONTAL_PADDING,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    borderRadius: 20,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toastText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+  descriptionText: {
+    ...Typography.body,
+    marginBottom: Spacing.md,
+    color: Colors.textMuted,
   },
 });

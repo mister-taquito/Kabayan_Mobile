@@ -7,28 +7,31 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   TouchableOpacity,
-  ActivityIndicator,
+  Image,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
-import { shopifyRequest }        from '../api/shopify';
-import { GET_HOME_PRODUCTS }     from '../api/queries';
-import { Header }                from '../components/Header';
+import { shopifyRequest }    from '../api/shopify';
+import { GET_HOME_PRODUCTS } from '../api/queries';
+import { Header }            from '../components/Header';
 import { ProductCard, Product }  from '../components/ProductCard';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootTabParamList }       from '../navigation/AppNavigator';
 
+// Theme imports
+import { Colors, Typography, Spacing, CommonStyles } from '../styles/Theme';
+
 type HomeProps = BottomTabScreenProps<RootTabParamList, 'Home'>;
 
-const { width } = Dimensions.get('window');
-const WRAPPER_MARGIN = 16;
-const IMAGE_WIDTH    = width - WRAPPER_MARGIN * 2;
-const HERO_ASPECT    = 2;        // width : height ratio
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const WRAPPER_MARGIN = Spacing.md;    // 16
+const IMAGE_WIDTH    = SCREEN_WIDTH - WRAPPER_MARGIN * 2;
+const HERO_ASPECT    = 2;            // 2:1 ratio
 const HERO_HEIGHT    = IMAGE_WIDTH / HERO_ASPECT;
-const CARD_WIDTH     = width * 0.45;
+const CARD_WIDTH     = SCREEN_WIDTH * 0.45;
 
 const categories = [
   { id: 'snacks',  title: 'Snacks',  image: require('../../assets/SnS banner.png') },
@@ -45,8 +48,8 @@ export default function HomeScreen({ navigation }: HomeProps) {
     (async () => {
       try {
         const data: any = await shopifyRequest(GET_HOME_PRODUCTS);
-        const mapped: Product[] = data.products.edges.map((e: any) => {
-          const node = e.node;
+        const mapped: Product[] = data.products.edges.map((edge: any) => {
+          const node = edge.node;
           return {
             id:     node.id,
             name:   node.title,
@@ -65,19 +68,23 @@ export default function HomeScreen({ navigation }: HomeProps) {
     })();
   }, []);
 
+  // Loading state
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-      </View>
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </SafeAreaView>
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <Text style={[Typography.body, { color: Colors.error, textAlign: 'center' }]}>
+          {error}
+        </Text>
+      </SafeAreaView>
     );
   }
 
@@ -92,44 +99,42 @@ export default function HomeScreen({ navigation }: HomeProps) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Banner: push “Promo” onto the stack */}
-        <TouchableOpacity
-          style={styles.heroWrapper}
-          onPress={() => navigation.getParent()?.navigate('Promo')}
-        >
+        {/* Hero Banner (unclickable for now) */}
+        <View style={styles.heroWrapper}>
           <Image
             source={require('../../assets/banner.png')}
             style={styles.heroImage}
           />
-        </TouchableOpacity>
+        </View>
 
-        {/* Categories: switch tabs to “Category” */}
+        {/* Categories */}
         <View style={styles.categoryWrapper}>
-          {categories.map(cat => (
+          {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={styles.categoryButton}
               onPress={() =>
-                // ← Use navigation.navigate because Category is a Tab screen:
                 navigation.navigate('Category', { categoryId: cat.id })
               }
             >
               <Image source={cat.image} style={styles.categoryImage} />
-              <Text style={styles.categoryText}>{cat.title}</Text>
+              <Text style={[Typography.label, styles.categoryText]}>
+                {cat.title}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* New Arrivals: push “ProductDetail” onto the stack */}
+        {/* New Arrivals */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>New Arrivals</Text>
+          <Text style={[Typography.h2, styles.sectionTitle]}>New Arrivals</Text>
           <FlatList
             horizontal
             data={newArrivals}
             keyExtractor={(item) => item.id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.carousel}
-            snapToInterval={CARD_WIDTH + 16}
+            snapToInterval={CARD_WIDTH + Spacing.sm * 2}
             decelerationRate="fast"
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -143,16 +148,16 @@ export default function HomeScreen({ navigation }: HomeProps) {
           />
         </View>
 
-        {/* Trending: same pattern */}
+        {/* Trending */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Trending</Text>
+          <Text style={[Typography.h2, styles.sectionTitle]}>Trending</Text>
           <FlatList
             horizontal
             data={trending}
             keyExtractor={(item) => item.id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.carousel}
-            snapToInterval={CARD_WIDTH + 16}
+            snapToInterval={CARD_WIDTH + Spacing.sm * 2}
             decelerationRate="fast"
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -171,41 +176,56 @@ export default function HomeScreen({ navigation }: HomeProps) {
 }
 
 const styles = StyleSheet.create({
-  container:     { flex: 1, backgroundColor: '#fafafa' },
-  scrollContent: { paddingBottom: 32 },
-
-  center:        { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText:     { fontSize: 16, color: '#900', textAlign: 'center', padding: 16 },
+  container: {
+    flex:            1,
+    backgroundColor: Colors.backgroundAlt,
+  },
+  scrollContent: {
+    paddingBottom: Spacing.xl,
+  },
 
   heroWrapper: {
-    marginTop: WRAPPER_MARGIN,
-    marginHorizontal: WRAPPER_MARGIN,
-    marginBottom: 24,
-    alignItems: 'center',
+    marginTop:        Spacing.md,
+    marginHorizontal: Spacing.md,
+    marginBottom:     Spacing.lg,
+    alignItems:       'center',
   },
   heroImage: {
-    width: IMAGE_WIDTH,
-    height: HERO_HEIGHT,
+    width:        IMAGE_WIDTH,
+    height:       HERO_HEIGHT,
     borderRadius: 16,
   },
 
   categoryWrapper: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: WRAPPER_MARGIN,
-    marginBottom: 32,
+    flexDirection:    'row',
+    justifyContent:   'space-between',
+    paddingHorizontal: Spacing.md,
+    marginBottom:     Spacing.lg,
   },
-  categoryButton: { alignItems: 'center', width: 80 },
-  categoryImage:  { width: 64, height: 64, borderRadius: 32, marginBottom: 8 },
-  categoryText:   { fontSize: 14, fontWeight: '500', textAlign: 'center' },
-
-  section:        { marginBottom: 32 },
-  sectionTitle:   {
-    fontSize: 20,
-    fontWeight: '700',
-    marginHorizontal: WRAPPER_MARGIN,
-    marginBottom: 12,
+  categoryButton: {
+    alignItems: 'center',
+    width:      80,
+  },
+  categoryImage: {
+    width:        64,
+    height:       64,
+    borderRadius: 32,
+    marginBottom: Spacing.sm,
+  },
+  categoryText: {
+    color: Colors.textDark,
   },
 
-  carousel:      { paddingLeft: WRAPPER_MARGIN },
+  section: {
+    marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    marginHorizontal: Spacing.md,
+    marginBottom:     Spacing.sm,
+    color:            Colors.textDark,
+  },
+
+  carousel: {
+    paddingLeft: Spacing.md - 8,
+  },
 });
