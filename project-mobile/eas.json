@@ -1,16 +1,20 @@
 {
   "build": {
     "development": {
-      "environment": "development"
+      "environment": "development",
+      "node": "18.18.2"
     },
     "preview": {
-      "environment": "preview"
+      "environment": "preview",
+      "node": "18.18.2"
     },
     "production": {
-      "environment": "production"
+      "environment": "production",
+      "node": "18.18.2"
     },
     "my-profile": {
-      "environment": "production"
+      "environment": "production",
+      "node": "18.18.2"
     }
   }
 }
