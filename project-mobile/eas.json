@@ -1,1 +1,16 @@
-ÿþ
+{
+  "build": {
+    "development": {
+      "environment": "development"
+    },
+    "preview": {
+      "environment": "preview"
+    },
+    "production": {
+      "environment": "production"
+    },
+    "my-profile": {
+      "environment": "production"
+    }
+  }
+}
