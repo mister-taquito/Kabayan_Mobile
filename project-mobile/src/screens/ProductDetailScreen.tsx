@@ -1,6 +1,6 @@
 // src/screens/ProductDetailScreen.tsx
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -15,53 +15,65 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { useCallback as useCb } from 'react';
 
 import { GET_PRODUCT_BY_HANDLE } from '../lib/shopify/queries/product';
-import { shopifyRequest } from '../lib/shopify';
+import { shopifyRequest } from '../api/shopify'; // ← migrated client
 import ImageCarousel from '../components/ImageCarousel';
 import { useCart } from '../context/CartContext';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import type { ShopifyProduct } from '../lib/shopify/types';
-
 import { Colors, Typography, Spacing, CommonStyles } from '../styles/Theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetail'>;
 
 const { width } = Dimensions.get('window');
-const H_PAD = Spacing.md; // 16
+const H_PAD = Spacing.md;
+
+// Minimal response typing for fields we use
+type ProductResponse = {
+  productByHandle: {
+    id: string;
+    title: string;
+    descriptionHtml: string;
+    images: { edges: { node: { url: string } }[] };
+    variants: {
+      edges: {
+        node: {
+          id: string; // variant (merchandiseId for Cart API)
+          title: string;
+          price: { amount: string; currencyCode: string };
+        };
+      }[];
+    };
+  } | null;
+};
 
 export default function ProductDetailScreen({ route }: Props) {
   const { handle } = route.params;
-  const [product, setProduct] = useState<ShopifyProduct | null>(null);
+  const [product, setProduct] = useState<ProductResponse['productByHandle'] | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { addToCart } = useCart();
 
-  // Toast slide-up setup
-  const [showToast, setShowToast] = useState<boolean>(false);
-  const toastTranslate = React.useRef(new Animated.Value(50)).current;
-
-  // Track whether this screen is focused
+  // Toast slide-up
+  const [showToast, setShowToast] = useState(false);
+  const toastTranslate = useRef(new Animated.Value(50)).current;
   const isFocused = useIsFocused();
 
-  // Fetch product by handle
   const fetchProduct = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     try {
-      const data = await shopifyRequest<{ productByHandle: ShopifyProduct }>(
-        GET_PRODUCT_BY_HANDLE,
-        { handle }
-      );
-
+      const data = await shopifyRequest<ProductResponse>(GET_PRODUCT_BY_HANDLE, { handle });
       if (!data.productByHandle) {
         setError('Product not found.');
+        setProduct(null);
+        setSelectedVariantId(null);
       } else {
-        setProduct(data.productByHandle);
-        const firstVariant = data.productByHandle.variants.edges[0].node.id;
+        const p = data.productByHandle;
+        setProduct(p);
+        const firstVariant = p.variants.edges[0]?.node?.id ?? null;
         setSelectedVariantId(firstVariant);
       }
     } catch (e) {
@@ -72,43 +84,24 @@ export default function ProductDetailScreen({ route }: Props) {
     }
   }, [handle]);
 
-  // On mount (and whenever handle changes), fetch the product
-  useEffect(() => {
-    fetchProduct();
-  }, [fetchProduct]);
+  useEffect(() => { fetchProduct(); }, [fetchProduct]);
 
-  // Prevent toast from lingering when navigating away
-  useFocusEffect(
-    useCb(() => {
-      return () => {
-        setShowToast(false);
-      };
-    }, [])
-  );
+  useFocusEffect(useCallback(() => () => setShowToast(false), []));
 
-  // Slide-up toast animation
   const triggerToast = () => {
     setShowToast(true);
-
     toastTranslate.setValue(50);
     Animated.timing(toastTranslate, {
-      toValue: 0,
-      duration: 200,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
+      toValue: 0, duration: 200, easing: Easing.out(Easing.ease), useNativeDriver: true,
     }).start(() => {
       setTimeout(() => {
         Animated.timing(toastTranslate, {
-          toValue: 50,
-          duration: 200,
-          easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
+          toValue: 50, duration: 200, easing: Easing.in(Easing.ease), useNativeDriver: true,
         }).start(() => setShowToast(false));
       }, 2000);
     });
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <SafeAreaView style={CommonStyles.centeredContainer}>
@@ -117,7 +110,6 @@ export default function ProductDetailScreen({ route }: Props) {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <SafeAreaView style={CommonStyles.centeredContainer}>
@@ -132,7 +124,6 @@ export default function ProductDetailScreen({ route }: Props) {
     );
   }
 
-  // If product is still null
   if (!product) {
     return (
       <SafeAreaView style={CommonStyles.centeredContainer}>
@@ -141,13 +132,18 @@ export default function ProductDetailScreen({ route }: Props) {
     );
   }
 
-  // Destructure product fields
   const { title, descriptionHtml, images, variants } = product;
-  const selectedVariant =
-    variants.edges.find((v) => v.node.id === selectedVariantId) ||
-    variants.edges[0];
-  const priceAmount = parseFloat(selectedVariant.node.price.amount).toFixed(2);
-  const currencyCode = selectedVariant.node.price.currencyCode;
+  const selectedEdge =
+    variants.edges.find((v) => v.node.id === selectedVariantId) ?? variants.edges[0];
+  const selectedVariant = selectedEdge?.node;
+
+  const priceAmount = selectedVariant
+    ? parseFloat(selectedVariant.price.amount).toFixed(2)
+    : '0.00';
+  const currencyCode = selectedVariant?.price.currencyCode ?? '';
+
+  // Always allow adding if we have a variant ID; Shopify will reject with userErrors if truly not sellable.
+  const canAdd = Boolean(selectedVariant?.id);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -176,15 +172,31 @@ export default function ProductDetailScreen({ route }: Props) {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            style={[CommonStyles.primaryButton, { marginTop: Spacing.lg }]}
-            onPress={() => {
-              if (selectedVariantId) {
-                addToCart(selectedVariantId, 1);
+            style={[
+              CommonStyles.primaryButton,
+              { marginTop: Spacing.lg },
+              (!canAdd || adding) && CommonStyles.primaryButtonDisabled,
+            ]}
+            disabled={!canAdd || adding}
+            onPress={async () => {
+              if (!selectedVariant?.id) return;
+              try {
+                setAdding(true);
+                await addToCart(selectedVariant.id, 1); // merchandiseId = variantId
                 triggerToast();
+              } catch (e) {
+                console.error('Add to cart failed', e);
+                // Optional: show a banner here if you want user-visible error feedback
+              } finally {
+                setAdding(false);
               }
             }}
           >
-            <Text style={CommonStyles.primaryButtonText}>+ Add to Cart</Text>
+            {adding ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={CommonStyles.primaryButtonText}>+ Add to Cart</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -205,28 +217,10 @@ export default function ProductDetailScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContent: {
-    paddingBottom: Spacing.xl, // leave room for toast
-  },
-  carouselWrapper: {
-    width: width,
-    height: width * 0.75, // 4:3 aspect ratio
-  },
-  infoContainer: {
-    paddingHorizontal: H_PAD,
-    paddingTop: Spacing.lg,
-  },
-  titleText: {
-    marginBottom: Spacing.sm,
-    color: Colors.textDark,
-  },
-  descriptionText: {
-    ...Typography.body,
-    marginBottom: Spacing.md,
-    color: Colors.textMuted,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scrollContent: { paddingBottom: Spacing.xl },
+  carouselWrapper: { width, height: width * 0.75 },
+  infoContainer: { paddingHorizontal: H_PAD, paddingTop: Spacing.lg },
+  titleText: { marginBottom: Spacing.sm, color: Colors.textDark },
+  descriptionText: { ...Typography.body, marginBottom: Spacing.md, color: Colors.textMuted },
 });

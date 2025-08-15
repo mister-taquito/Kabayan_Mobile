@@ -1,26 +1,76 @@
-// lib/shopify/fragments/cart.ts
+// src/lib/shopify/fragments/cart.ts
 
-import { PRICE_FRAGMENT } from './price';
-import { PRODUCT_CARD_FRAGMENT } from './product';
+/** Cart-only money fragment name (won’t collide with product queries). */
+export const CART_MONEY_FRAGMENT = /* GraphQL */ `
+  fragment CartMoneyFragment on MoneyV2 {
+    amount
+    currencyCode
+  }
+`;
 
-export const CART_LINE_ITEM_FRAGMENT = /* GraphQL */ `
-  ${PRICE_FRAGMENT}
-  ${PRODUCT_CARD_FRAGMENT}
+/** Minimal product fields (no money fields here). */
+export const CART_PRODUCT_MIN_FRAGMENT = /* GraphQL */ `
+  fragment CartProductMinFragment on Product {
+    id
+    handle
+    title
+  }
+`;
 
-  fragment CartLineItemFragment on CartLineItem {
+/** Cart line (no PriceFragment anywhere). */
+export const CART_LINE_FRAGMENT = /* GraphQL */ `
+  fragment CartLineFragment on CartLine {
     id
     quantity
+    attributes { key value }
+    cost {
+      amountPerQuantity { ...CartMoneyFragment }
+      subtotalAmount   { ...CartMoneyFragment }
+      totalAmount      { ...CartMoneyFragment }
+    }
     merchandise {
       ... on ProductVariant {
         id
         title
-        product {
-          ...ProductCardFragment
-        }
-        price {
-          ...PriceFragment
-        }
+        availableForSale
+        selectedOptions { name value }
+        price          { ...CartMoneyFragment }
+        compareAtPrice { ...CartMoneyFragment }
+        product { ...CartProductMinFragment }
+        image { url altText width height }
       }
+    }
+  }
+`;
+
+/** Full cart payload. */
+export const CART_FRAGMENT = /* GraphQL */ `
+  ${CART_MONEY_FRAGMENT}
+  ${CART_PRODUCT_MIN_FRAGMENT}
+  ${CART_LINE_FRAGMENT}
+
+  fragment CartFragment on Cart {
+    id
+    createdAt
+    updatedAt
+    checkoutUrl
+    note
+    attributes { key value }
+    buyerIdentity {
+      email
+      phone
+      countryCode
+      customer { id }
+    }
+    discountCodes { code applicable }
+    cost {
+      subtotalAmount  { ...CartMoneyFragment }
+      totalAmount     { ...CartMoneyFragment }
+      totalTaxAmount  { ...CartMoneyFragment }
+      totalDutyAmount { ...CartMoneyFragment }
+    }
+    lines(first: 100) {
+      edges { node { ...CartLineFragment } }
     }
   }
 `;

@@ -1,6 +1,6 @@
 // src/screens/CartScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   StyleSheet,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { useCart, CartItem } from '../context/CartContext';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -24,35 +25,42 @@ type CartTabProps = CompositeScreenProps<
 >;
 
 export default function CartScreen({ navigation }: CartTabProps) {
-  const { items, updateItem, removeItem, checkoutUrl } = useCart();
+  const { items, updateItem, removeItem, checkoutUrl, loading, refresh } = useCart();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calculate subtotal
-  const subtotal = items.reduce(
-    (sum, item) => sum + parseFloat(item.price.amount) * item.quantity,
-    0
-  );
+  // Calculate subtotal (use unit price x qty from context mapping)
+  const { subtotal, currency } = useMemo(() => {
+    const sum = items.reduce(
+      (acc, it) => acc + parseFloat(it.price.amount) * it.quantity,
+      0
+    );
+    return { subtotal: sum, currency: items[0]?.price.currencyCode ?? '' };
+  }, [items]);
 
   //
-  // 1) Empty‐state
+  // 0) Initial loading (cart bootstrap)
   //
-  if (items.length === 0) {
+  if (loading && items.length === 0) {
     return (
       <SafeAreaView style={CommonStyles.centeredContainer}>
-        <Text style={CommonStyles.emptyText}>
-          Your cart is empty.
-        </Text>
+        <ActivityIndicator size="large" />
+      </SafeAreaView>
+    );
+  }
 
-        {/* “Continue Shopping” now uses the theme’s primaryButton styles,
-            including horizontal padding from Theme.ts */}
+  //
+  // 1) Empty state
+  //
+  if (!loading && items.length === 0) {
+    return (
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <Text style={CommonStyles.emptyText}>Your cart is empty.</Text>
         <TouchableOpacity
           style={CommonStyles.primaryButton}
           onPress={() => navigation.navigate('Home')}
         >
-          <Text style={CommonStyles.primaryButtonText}>
-            Continue Shopping
-          </Text>
+          <Text style={CommonStyles.primaryButtonText}>Continue Shopping</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -84,7 +92,7 @@ export default function CartScreen({ navigation }: CartTabProps) {
             setIsUpdating(true);
             setError(null);
             try {
-              await updateItem(item.id, item.quantity - 1);
+              await updateItem(item.id, Math.max(1, item.quantity - 1));
             } catch {
               setError('Unable to update quantity. Try again.');
             } finally {
@@ -102,7 +110,7 @@ export default function CartScreen({ navigation }: CartTabProps) {
           </Text>
         </TouchableOpacity>
 
-        <View style={{ width: Spacing.sm * 1.5 }} />  {/* 12px */}
+        <View style={{ width: Spacing.sm * 1.5 }} />
 
         <TouchableOpacity
           style={[styles.controlButton, isUpdating && styles.controlButtonDisabled]}
@@ -124,7 +132,7 @@ export default function CartScreen({ navigation }: CartTabProps) {
           </Text>
         </TouchableOpacity>
 
-        <View style={{ width: Spacing.sm * 1.5 }} />  {/* 12px */}
+        <View style={{ width: Spacing.sm * 1.5 }} />
 
         <TouchableOpacity
           style={styles.removeButton}
@@ -156,40 +164,43 @@ export default function CartScreen({ navigation }: CartTabProps) {
         </View>
       )}
 
-      {/* 4) List of cart items */}
+      {/* 4) List of cart items with pull-to-refresh */}
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refresh} />
+        }
         ListFooterComponent={<View style={{ height: 1 }} />}
       />
 
       {/* 5) Footer */}
       <View style={styles.footer}>
         <Text style={[Typography.h2, { color: Colors.textDark, marginBottom: Spacing.sm }]}>
-          Subtotal: {subtotal.toFixed(2)} {items[0]?.price.currencyCode}
+          Subtotal: {subtotal.toFixed(2)} {currency}
         </Text>
+
         {!checkoutUrl && (
           <Text style={[Typography.label, { color: Colors.error, marginBottom: Spacing.sm }]}>
             Add at least one item to enable checkout.
           </Text>
         )}
+
         <TouchableOpacity
           style={[
             CommonStyles.primaryButton,
             (!checkoutUrl || isUpdating) && CommonStyles.primaryButtonDisabled,
           ]}
           disabled={!checkoutUrl || isUpdating}
-          onPress={() => navigation.getParent()?.navigate('Checkout')}
+          onPress={() => navigation.getParent()?.navigate('Checkout', { url: checkoutUrl ?? undefined })}
         >
-          <Text style={CommonStyles.primaryButtonText}>
-            Proceed to Checkout
-          </Text>
+          <Text style={CommonStyles.primaryButtonText}>Proceed to Checkout</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 6) Overlay spinner */}
+      {/* 6) Overlay spinner for line updates */}
       {isUpdating && (
         <View style={styles.updatingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
@@ -205,17 +216,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   listContent: {
-    flexGrow:      0,            // shrink‐wrap items
-    paddingBottom: Spacing.xl,   // leave room for footer
+    flexGrow:      0,
+    paddingBottom: Spacing.xl,
   },
 
-  //
   // Item Row
-  //
   itemRow: {
     flexDirection:     'row',
-    paddingVertical:   Spacing.sm * 1.5,  // 12px
-    paddingHorizontal: Spacing.md,        // 16px
+    paddingVertical:   Spacing.sm * 1.5,
+    paddingHorizontal: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     alignItems:        'center',
@@ -227,7 +236,7 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontWeight:   '600',
     color:        Colors.textDark,
-    marginBottom: Spacing.xs,  // 4px
+    marginBottom: Spacing.xs,
   },
   itemDetail: {
     ...Typography.label,
@@ -258,7 +267,7 @@ const styles = StyleSheet.create({
     color: Colors.primaryLight,
   },
   removeButton: {
-    marginLeft: Spacing.sm * 1.5, // 12px
+    marginLeft: Spacing.sm * 1.5,
   },
   removeButtonText: {
     ...Typography.label,
@@ -266,9 +275,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  //
   // Footer
-  //
   footer: {
     position:         'absolute',
     bottom:           0,
@@ -280,9 +287,7 @@ const styles = StyleSheet.create({
     padding:          Spacing.md,
   },
 
-  //
   // Overlay spinner
-  //
   updatingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.2)',

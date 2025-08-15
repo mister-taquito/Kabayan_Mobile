@@ -1,6 +1,6 @@
 // src/screens/CheckoutScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,23 +10,30 @@ import {
   SafeAreaView,
   StyleSheet,
 } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/AppNavigator';
 import { useCart } from '../context/CartContext';
 
-export default function CheckoutScreen({ navigation }: any) {
-  const { checkoutUrl } = useCart();
-  const [isAttempting, setIsAttempting] = useState<boolean>(false);
+type Props = NativeStackScreenProps<RootStackParamList, 'Checkout'>;
+
+export default function CheckoutScreen({ navigation, route }: Props) {
+  const { checkoutUrl: contextUrl, loading } = useCart();
+  const [isAttempting, setIsAttempting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const openCheckout = async () => {
+  // Prefer a deep-linked URL passed in from navigation; otherwise use the cart context.
+  const checkoutUrl = useMemo(
+    () => route.params?.url ?? contextUrl ?? null,
+    [route.params?.url, contextUrl]
+  );
+
+  const openCheckout = useCallback(async () => {
     if (!checkoutUrl) return;
     setIsAttempting(true);
     setError(null);
-
     try {
       const supported = await Linking.canOpenURL(checkoutUrl);
-      if (!supported) {
-        throw new Error('Cannot open this URL.');
-      }
+      if (!supported) throw new Error('Cannot open this URL.');
       await Linking.openURL(checkoutUrl);
     } catch (err) {
       console.error('Linking error', err);
@@ -34,30 +41,53 @@ export default function CheckoutScreen({ navigation }: any) {
     } finally {
       setIsAttempting(false);
     }
-  };
+  }, [checkoutUrl]);
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {!checkoutUrl && (
+  // ---- States --------------------------------------------------------------
+
+  // A: Still preparing/bootstrapping the cart and we don't yet have a URL
+  if (loading && !checkoutUrl) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" />
+          <Text style={[styles.infoText, { marginTop: 12 }]}>
+            Preparing your cart…
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // B: No checkout URL => empty cart (or not initialized)
+  if (!checkoutUrl) {
+    return (
+      <SafeAreaView style={styles.container}>
         <View style={styles.center}>
           <Text style={styles.infoText}>
             Add at least one item to begin checkout.
           </Text>
           <View style={{ marginTop: 12 }}>
-            <Button title="Back to Cart" onPress={() => navigation.navigate('Cart')} />
+            <Button
+              title="Back to Cart"
+              onPress={() => navigation.getParent()?.navigate('Cart')}
+            />
           </View>
         </View>
-      )}
+      </SafeAreaView>
+    );
+  }
 
-      {checkoutUrl && (
-        <View style={styles.center}>
-          {isAttempting ? (
-            <ActivityIndicator size="large" />
-          ) : (
-            <Button title="Open Checkout" onPress={openCheckout} />
-          )}
-        </View>
-      )}
+  // C: We have a valid checkoutUrl
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.center}>
+        {isAttempting ? (
+          <ActivityIndicator size="large" />
+        ) : (
+          <Button title="Open Checkout" onPress={openCheckout} />
+        )}
+      </View>
 
       {error && (
         <View style={styles.errorBanner}>
@@ -70,6 +100,12 @@ export default function CheckoutScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
+
+/**
+ * If you prefer an in-app experience, install:
+ *   npx expo install react-native-webview
+ * and render <WebView source={{ uri: checkoutUrl }} /> instead of Linking.
+ */
 
 const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#fff' },
