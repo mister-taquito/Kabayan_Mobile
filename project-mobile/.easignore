@@ -1,4 +1,8 @@
-# keep lockfiles!
+# Ignore native folders for managed EAS builds
+/android
+/ios
+
+# Keep lockfiles!
 !package-lock.json
 !yarn.lock
 !pnpm-lock.yaml
