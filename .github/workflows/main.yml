@@ -1,0 +1,48 @@
+New-Item -ItemType Directory -Force .github\workflows | Out-Null
+@"
+name: ios-local-build
+on:
+  workflow_dispatch:
+defaults:
+  run:
+    working-directory: project-mobile
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install EAS CLI
+        run: npm i -g eas-cli
+      - name: Install deps
+        run: npm ci
+      - name: Expo login (token)
+        run: eas login --token ${{ secrets.EXPO_TOKEN }}
+      - name: EAS local build (iOS)
+        run: eas build --platform ios --profile preview --local --non-interactive --output build.ipa
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: project-mobile/build.ipa
+      - name: Write ASC API key to file
+        shell: bash
+        run: |
+          echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode > asc.p8
+      - name: Submit to TestFlight
+        run: |
+          eas submit -p ios \
+            --path build.ipa \
+            --asc-app-id "${{ secrets.ASC_APP_ID }}" \
+            --issuer-id "${{ secrets.ASC_ISSUER_ID }}" \
+            --key-id "${{ secrets.ASC_KEY_ID }}" \
+            --asc-api-key-path asc.p8 \
+            --apple-team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --non-interactive --verbose
+"@ | Out-File -Encoding utf8 .github\workflows\ios-local.yml
+
+git add .github/workflows/ios-local.yml
+git commit -m "ci: add ios-local-build workflow"
+git push
