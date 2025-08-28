@@ -2,7 +2,6 @@ name: ios-local-build
 on:
   workflow_dispatch:
 
-# Run every shell step from the mobile app folder
 defaults:
   run:
     working-directory: project-mobile
@@ -10,6 +9,8 @@ defaults:
 jobs:
   build:
     runs-on: macos-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}   # <- auth for all eas commands
     steps:
       - uses: actions/checkout@v4
 
@@ -23,8 +24,9 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Expo login (token)
-        run: eas login --token ${{ secrets.EXPO_TOKEN }}
+      # optional sanity check (keeps token secret; just prints the user)
+      - name: Verify Expo auth
+        run: eas whoami
 
       - name: EAS local build (iOS)
         run: eas build --platform ios --profile preview --local --non-interactive --output build.ipa
