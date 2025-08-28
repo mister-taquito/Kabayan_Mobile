@@ -2,6 +2,11 @@ name: ios-local-build
 on:
   workflow_dispatch:
 
+# Run every shell step from the mobile app folder
+defaults:
+  run:
+    working-directory: project-mobile
+
 jobs:
   build:
     runs-on: macos-latest
@@ -21,7 +26,6 @@ jobs:
       - name: Expo login (token)
         run: eas login --token ${{ secrets.EXPO_TOKEN }}
 
-      # Local iOS build on GitHub's Mac (no EAS cloud credits used)
       - name: EAS local build (iOS)
         run: eas build --platform ios --profile preview --local --non-interactive --output build.ipa
 
@@ -29,9 +33,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
-          path: build.ipa
+          path: project-mobile/build.ipa
 
-      # Submit to TestFlight using ASC API key
       - name: Write ASC API key to file
         shell: bash
         run: |
