@@ -2,7 +2,7 @@ name: ios-local-build
 on:
   workflow_dispatch:
 
-# Run all shell steps from your app folder
+# Run every shell step inside your app folder
 defaults:
   run:
     working-directory: project-mobile
@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: macos-latest
     env:
-      # Expo auth for all EAS commands (create on expo.dev → Account → Access Tokens)
+      # Expo auth for all EAS commands
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     steps:
@@ -32,17 +32,15 @@ jobs:
       - name: Verify Expo auth
         run: eas whoami
 
-      # Make Apple API key available to EAS (for managed credentials)
+      # ✅ Correct heredoc usage (no quotes) to set multiline env var
       - name: Set Apple API key env for EAS
         shell: bash
         run: |
           echo "EXPO_APP_STORE_CONNECT_ISSUER_ID=${{ secrets.ASC_ISSUER_ID }}" >> $GITHUB_ENV
           echo "EXPO_APP_STORE_CONNECT_KEY_ID=${{ secrets.ASC_KEY_ID }}" >> $GITHUB_ENV
-          {
-            echo "EXPO_APP_STORE_CONNECT_PRIVATE_KEY<<'EOF'"
-            echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode
-            echo "EOF"
-          } >> $GITHUB_ENV
+          echo "EXPO_APP_STORE_CONNECT_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
+          echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Ensure iOS credentials (managed)
         run: eas credentials -p ios --non-interactive --force
@@ -56,8 +54,7 @@ jobs:
           name: ios-ipa
           path: project-mobile/build.ipa
 
-      # Recreate the .p8 file from the secret just for submission
-      - name: Write ASC API key to file
+      - name: Write ASC API key to file (for submit)
         shell: bash
         run: |
           echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode > asc.p8
