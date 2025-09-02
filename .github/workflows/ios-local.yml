@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: macos-latest
     env:
-      # Expo auth for all EAS commands
+      # Expo auth for all EAS commands (create on expo.dev → Account → Access Tokens)
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     steps:
@@ -32,15 +32,18 @@ jobs:
       - name: Verify Expo auth
         run: eas whoami
 
-      # ✅ Correct heredoc usage (no quotes) to set multiline env var
+      # ✅ Write Apple API key to $GITHUB_ENV using a UNIQUE delimiter
       - name: Set Apple API key env for EAS
         shell: bash
         run: |
-          echo "EXPO_APP_STORE_CONNECT_ISSUER_ID=${{ secrets.ASC_ISSUER_ID }}" >> $GITHUB_ENV
-          echo "EXPO_APP_STORE_CONNECT_KEY_ID=${{ secrets.ASC_KEY_ID }}" >> $GITHUB_ENV
-          echo "EXPO_APP_STORE_CONNECT_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
-          echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "EXPO_APP_STORE_CONNECT_ISSUER_ID=${{ secrets.ASC_ISSUER_ID }}" >> "$GITHUB_ENV"
+          echo "EXPO_APP_STORE_CONNECT_KEY_ID=${{ secrets.ASC_KEY_ID }}" >> "$GITHUB_ENV"
+          DELIM=$(uuidgen)
+          {
+            echo "EXPO_APP_STORE_CONNECT_PRIVATE_KEY<<$DELIM"
+            echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode
+            echo "$DELIM"
+          } >> "$GITHUB_ENV"
 
       - name: Ensure iOS credentials (managed)
         run: eas credentials -p ios --non-interactive --force
