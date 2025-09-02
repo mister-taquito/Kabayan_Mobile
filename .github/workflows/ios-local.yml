@@ -2,6 +2,7 @@ name: ios-local-build
 on:
   workflow_dispatch:
 
+# Run all shell steps from your app folder
 defaults:
   run:
     working-directory: project-mobile
@@ -10,13 +11,17 @@ jobs:
   build:
     runs-on: macos-latest
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}   # <- auth for all eas commands
+      # Expo auth for all EAS commands (create on expo.dev → Account → Access Tokens)
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: project-mobile/package-lock.json
 
       - name: Install EAS CLI
         run: npm i -g eas-cli
@@ -24,12 +29,26 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      # optional sanity check (keeps token secret; just prints the user)
       - name: Verify Expo auth
         run: eas whoami
 
+      # Make Apple API key available to EAS (for managed credentials)
+      - name: Set Apple API key env for EAS
+        shell: bash
+        run: |
+          echo "EXPO_APP_STORE_CONNECT_ISSUER_ID=${{ secrets.ASC_ISSUER_ID }}" >> $GITHUB_ENV
+          echo "EXPO_APP_STORE_CONNECT_KEY_ID=${{ secrets.ASC_KEY_ID }}" >> $GITHUB_ENV
+          {
+            echo "EXPO_APP_STORE_CONNECT_PRIVATE_KEY<<'EOF'"
+            echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+      - name: Ensure iOS credentials (managed)
+        run: eas credentials -p ios --non-interactive --force
+
       - name: EAS local build (iOS)
-        run: eas build --platform ios --profile preview --local --non-interactive --output build.ipa
+        run: eas build --platform ios --profile preview --local --non-interactive --output build.ipa --verbose
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
@@ -37,6 +56,7 @@ jobs:
           name: ios-ipa
           path: project-mobile/build.ipa
 
+      # Recreate the .p8 file from the secret just for submission
       - name: Write ASC API key to file
         shell: bash
         run: |
