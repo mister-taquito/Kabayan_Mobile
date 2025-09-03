@@ -61,5 +61,6 @@ jobs:
         run: |
           eas submit --platform ios \
             --path build.ipa \
+            --profile preview \
             --non-interactive \
             --verbose

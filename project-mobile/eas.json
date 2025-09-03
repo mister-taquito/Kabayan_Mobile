@@ -1,4 +1,7 @@
 {
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "environment": "development",
@@ -15,6 +18,13 @@
     "my-profile": {
       "environment": "production",
       "node": "18.18.2"
+    }
+  },
+  "submit": {
+    "preview": {
+      "ios": {
+        "ascAppId": "6751611425"
+      }
     }
   }
 }
