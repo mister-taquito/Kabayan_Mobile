@@ -15,6 +15,6 @@
   },
   "include": [
     "src/**/*",    // ← make sure TS actually scans all your .ts/.tsx under src
-    "env.d.ts"
+
   ]
 }

@@ -1,5 +1,4 @@
-# Ignore native folders for managed EAS builds
-/android
+﻿/android
 /ios
 
 # Keep lockfiles!
