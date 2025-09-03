@@ -23,7 +23,10 @@
   "submit": {
     "preview": {
       "ios": {
-        "ascAppId": "6751611425"
+        "ascAppId": "6751611425",             
+        "ascApiKeyId": "env:ASC_KEY_ID",                
+        "ascApiKeyIssuerId": "env:ASC_ISSUER_ID",     
+        "ascApiKeyPath": "env:EXPO_ASC_API_KEY_PATH"   
       }
     }
   }
