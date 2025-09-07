@@ -49,46 +49,41 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
 
-      - name: Submit to TestFlight (explicit flags)
+      - name: Submit to TestFlight (via submit profile + env)
         working-directory: project-mobile
         env:
-          EXPO_TOKEN:       ${{ secrets.EXPO_TOKEN }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-          # From your Secrets page (exact names below)
-          ASC_KEY_ID:       ${{ secrets.ASC_KEY_ID }}         # e.g. J66XXCZ7UG  (10 chars)
-          ASC_ISSUER_ID:    ${{ secrets.ASC_ISSUER_ID }}      # e.g. f8d047c6-f1d2-431c-b772-68be376f837b
-          ASC_APP_ID:       ${{ secrets.ASC_APP_ID }}         # e.g. 6751611425  (digits only)
-          APPLE_TEAM_ID:    ${{ secrets.APPLE_TEAM_ID }}      # 10 chars (Team ID)
+          # These names MUST match the env: mappings in eas.json above
+          ASC_APP_ID:     ${{ secrets.ASC_APP_ID }}        # e.g. 6751611425
+          ASC_KEY_ID:     ${{ secrets.ASC_KEY_ID }}        # e.g. J66XXCZ7UG
+          ASC_ISSUER_ID:  ${{ secrets.ASC_ISSUER_ID }}     # e.g. f8d047c6-f1d2-431c-b772-68be376f837b
+          APPLE_TEAM_ID:  ${{ secrets.APPLE_TEAM_ID }}     # 10-char Team ID
+          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
 
         run: |
-          # Make sure we have the latest CLI and no surprises
-          npm i -g eas-cli@latest
+          # (Optional) sanity trim to avoid hidden whitespace/newlines in secrets
+          trim () { printf "%s" "$1" | tr -d '\r\n\t '; }
+          export ASC_APP_ID="$(trim "$ASC_APP_ID")"
+          export ASC_KEY_ID="$(trim "$ASC_KEY_ID")"
+          export ASC_ISSUER_ID="$(trim "$ASC_ISSUER_ID")"
+          export APPLE_TEAM_ID="$(trim "$APPLE_TEAM_ID")"
 
-          # Build the absolute path to the p8 we wrote earlier
-          ASC_P8="${GITHUB_WORKSPACE}/project-mobile/asc.p8"
+          # Quick client-side format checks
+          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]      || { echo "ASC_KEY_ID format bad"; exit 1; }
+          [[ "$ASC_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]]  || { echo "ASC_ISSUER_ID format bad"; exit 1; }
+          [[ "$ASC_APP_ID" =~ ^[0-9]+$ ]]            || { echo "ASC_APP_ID format bad"; exit 1; }
+          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]   || { echo "APPLE_TEAM_ID format bad"; exit 1; }
+          test -f "$EXPO_ASC_API_KEY_PATH"           || { echo "asc.p8 not found at $EXPO_ASC_API_KEY_PATH"; exit 1; }
 
-          # Hard-trim any stray whitespace/newlines that may be in GitHub secrets
-          trim () { printf "%s" "$1" | tr -d '\r\n\t ' ; }
-          ASC_KEY_ID="$(trim "$ASC_KEY_ID")"
-          ASC_ISSUER_ID="$(trim "$ASC_ISSUER_ID")"
-          ASC_APP_ID="$(trim "$ASC_APP_ID")"
-          APPLE_TEAM_ID="$(trim "$APPLE_TEAM_ID")"
+          # Show the resolved config (masked) so we can confirm the submit profile is picked up
+          eas config --platform ios --profile preview
 
-          # Quick client-side format checks (fail fast with a helpful message)
-          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "ASC_KEY_ID format bad"; exit 1; }
-          [[ "$ASC_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]] || { echo "ASC_ISSUER_ID format bad"; exit 1; }
-          [[ "$ASC_APP_ID" =~ ^[0-9]+$ ]] || { echo "ASC_APP_ID format bad"; exit 1; }
-          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "APPLE_TEAM_ID format bad"; exit 1; }
-          test -f "$ASC_P8" || { echo "asc.p8 not found at $ASC_P8"; exit 1; }
-
-          # Submit with explicit flags (bypass eas.json submit mapping entirely)
+          # Submit using the submit profile (no unsupported flags)
           eas submit -p ios \
             --path build.ipa \
-            --asc-app-id "$ASC_APP_ID" \
-            --asc-api-key-id "$ASC_KEY_ID" \
-            --asc-api-key-issuer-id "$ASC_ISSUER_ID" \
-            --asc-api-key-path "$ASC_P8" \
-            --apple-team-id "$APPLE_TEAM_ID" \
+            --profile preview \
             --non-interactive --verbose
+
 
 
