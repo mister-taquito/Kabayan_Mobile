@@ -1,7 +1,5 @@
 {
-  "cli": {
-    "appVersionSource": "remote"
-  },
+  "cli": { "appVersionSource": "remote" },
   "build": {
     "development": { "node": "18.18.2" },
     "preview":     { "node": "18.18.2" },
@@ -12,10 +10,10 @@
     "preview": {
       "ios": {
         "ascAppId": "6751611425",
-        "ascApiKeyId": "env:ASC_KEY_ID",
-        "ascApiKeyIssuerId": "env:ASC_ISSUER_ID",
+        "ascApiKeyId": "env:EXPO_ASC_KEY_ID",
+        "ascApiKeyIssuerId": "env:EXPO_ASC_ISSUER_ID",
         "ascApiKeyPath": "env:EXPO_ASC_API_KEY_PATH",
-        "appleTeamId": "env:APPLE_TEAM_ID"
+        "appleTeamId": "env:EXPO_APPLE_TEAM_ID"
       }
     }
   }
