@@ -49,6 +49,9 @@ jobs:
           echo "KeyId length: ${#ASC_KEY_ID}"
           echo "IssuerId length: ${#ASC_ISSUER_ID}"
           test -f asc.p8 && echo "asc.p8 exists" || (echo "asc.p8 missing"; exit 1)
+      [[ "$EXPO_ASC_KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Bad EXPO_ASC_KEY_ID"; exit 1; }
+      [[ "$EXPO_ASC_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]] || { echo "Bad EXPO_ASC_ISSUER_ID"; exit 1; }
+      [[ "$EXPO_APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Bad EXPO_APPLE_TEAM_ID"; exit 1; }
 
       - name: Submit to TestFlight
         working-directory: project-mobile
