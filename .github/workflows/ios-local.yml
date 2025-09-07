@@ -1,6 +1,5 @@
 name: ios-local-build
-on:
-  workflow_dispatch:
+on: { workflow_dispatch: {} }
 
 defaults:
   run:
@@ -10,7 +9,7 @@ jobs:
   build:
     runs-on: macos-latest
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}   # auth for all eas commands
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,25 +35,28 @@ jobs:
           name: ios-ipa
           path: project-mobile/build.ipa
 
-      # ✅ New step: write .p8 key from secret into a file
+      # --- App Store Connect API key setup ---
       - name: Write ASC API key to file
-        working-directory: project-mobile
-        run: |
-          cat > asc.p8 <<'EOF'
-          ${{ secrets.ASC_API_KEY_P8 }}
-          EOF
-          chmod 600 asc.p8
+        # runner shell is bash; this correctly decodes to asc.p8
+        run: echo "${{ secrets.ASC_API_KEY_BASE64 }}" | base64 --decode > asc.p8
 
-      - name: Submit to TestFlight
-        working-directory: project-mobile
+      - name: Quick format sanity check (does not print secrets)
+        shell: bash
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
         run: |
-          eas submit --platform ios \
-            --path build.ipa \
-            --profile preview \
-            --non-interactive \
-            --verbose
+          echo "KeyId length: ${#ASC_KEY_ID}"
+          echo "IssuerId length: ${#ASC_ISSUER_ID}"
+          test -f asc.p8 && echo "asc.p8 exists" || (echo "asc.p8 missing"; exit 1)
+
+      - name: Submit to TestFlight
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
+          # Optional if you’re on multiple teams:
+          # EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          eas submit --platform ios --path build.ipa --non-interactive --verbose
