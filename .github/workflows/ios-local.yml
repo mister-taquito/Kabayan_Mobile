@@ -54,14 +54,16 @@ jobs:
         working-directory: project-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+          # App Store Connect API key (picked up automatically by EAS)
           EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
-          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}   # optional
-          APPSTORE_APP_ID: ${{ secrets.APPSTORE_APP_ID }}    # <-- the numeric Apple ID
+
+          # Optional if multiple teams
+          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           eas submit --platform ios \
             --path build.ipa \
-            --asc-app-id $APPSTORE_APP_ID \
+            --profile preview \
             --non-interactive --verbose
-
