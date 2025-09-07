@@ -1,19 +1,19 @@
 {
   "cli": { "appVersionSource": "remote" },
   "build": {
-    "development": { "node": "18.18.2" },
-    "preview":     { "node": "18.18.2" },
-    "production":  { "node": "18.18.2" },
-    "my-profile":  { "node": "18.18.2" }
+    "development": { "environment": "development", "node": "18.18.2" },
+    "preview":      { "environment": "preview",      "node": "18.18.2" },
+    "production":   { "environment": "production",   "node": "18.18.2" },
+    "my-profile":   { "environment": "production",   "node": "18.18.2" }
   },
   "submit": {
     "preview": {
       "ios": {
-        "ascAppId": "6751611425",
-        "ascApiKeyId": "env:EXPO_ASC_KEY_ID",
-        "ascApiKeyIssuerId": "env:EXPO_ASC_ISSUER_ID",
+        "ascAppId": "env:ASC_APP_ID",            
+        "ascApiKeyId": "env:ASC_KEY_ID",
+        "ascApiKeyIssuerId": "env:ASC_ISSUER_ID",
         "ascApiKeyPath": "env:EXPO_ASC_API_KEY_PATH",
-        "appleTeamId": "env:EXPO_APPLE_TEAM_ID"
+        "appleTeamId": "env:APPLE_TEAM_ID"
       }
     }
   }

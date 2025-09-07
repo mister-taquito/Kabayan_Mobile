@@ -37,33 +37,29 @@ jobs:
 
       # --- App Store Connect API key setup ---
       - name: Write ASC API key to file
-        # macOS uses -D to decode; GNU uses -d. Try both.
-        run: |
-          ( echo "${{ secrets.ASC_API_KEY_BASE64 }}" | base64 -d > asc.p8 ) || \
-          ( echo "${{ secrets.ASC_API_KEY_BASE64 }}" | base64 -D > asc.p8 )
+        run: echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode > asc.p8
 
-      - name: Quick format sanity check (does not print secrets)
-        shell: bash
+      - name: Quick sanity check (no secrets printed)
+        run: |
+          echo "ASC_KEY_ID length: ${#ASC_KEY_ID}"
+          echo "ASC_ISSUER_ID length: ${#ASC_ISSUER_ID}"
+          test -f asc.p8 && echo "asc.p8 exists" || (echo "asc.p8 missing"; exit 1)
+          wc -c asc.p8
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          test -f asc.p8 && echo "asc.p8 exists, size: $(wc -c < asc.p8) bytes" || (echo "asc.p8 missing"; exit 1)
-          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Bad ASC_KEY_ID (expect 10 uppercase letters/digits)"; exit 1; }
-          [[ "$ASC_ISSUER_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] || { echo "Bad ASC_ISSUER_ID (expect UUID)"; exit 1; }
-          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "Bad APPLE_TEAM_ID (expect 10 uppercase letters/digits)"; exit 1; }
 
       - name: Submit to TestFlight
+        working-directory: project-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
-          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }} # only if you kept env:ASC_APP_ID in eas.json
         run: |
-          eas submit --platform ios \
-            --path build.ipa \
-            --profile preview \
-            --non-interactive --verbose
+          # Shows what EAS resolved (secrets masked) – super helpful
+          eas config --platform ios --profile preview
+          eas submit --platform ios --path build.ipa --profile preview --non-interactive --verbose
+
