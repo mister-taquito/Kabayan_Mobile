@@ -16,6 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          node-version: 18.18.2
 
       - name: Install EAS CLI
         run: npm i -g eas-cli
@@ -71,6 +72,7 @@ jobs:
 
           # Quick client-side format checks
           [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]      || { echo "ASC_KEY_ID format bad"; exit 1; }
+          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10,12}$ ]]      || { echo "ASC_KEY_ID format bad"; exit 1; }
           [[ "$ASC_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]]  || { echo "ASC_ISSUER_ID format bad"; exit 1; }
           [[ "$ASC_APP_ID" =~ ^[0-9]+$ ]]            || { echo "ASC_APP_ID format bad"; exit 1; }
           [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]   || { echo "APPLE_TEAM_ID format bad"; exit 1; }
