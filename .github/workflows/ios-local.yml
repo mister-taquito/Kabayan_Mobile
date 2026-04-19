@@ -15,7 +15,6 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
           node-version: 18.18.2
 
       - name: Install EAS CLI
@@ -36,7 +35,6 @@ jobs:
           name: ios-ipa
           path: project-mobile/build.ipa
 
-      # --- App Store Connect API key setup ---
       - name: Write ASC API key to file
         run: echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode > asc.p8
 
@@ -54,38 +52,27 @@ jobs:
         working-directory: project-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-          # These names MUST match the env: mappings in eas.json above
-          ASC_APP_ID:     ${{ secrets.ASC_APP_ID }}        # e.g. 6751611425
-          ASC_KEY_ID:     ${{ secrets.ASC_KEY_ID }}        # e.g. J66XXCZ7UG
-          ASC_ISSUER_ID:  ${{ secrets.ASC_ISSUER_ID }}     # e.g. f8d047c6-f1d2-431c-b772-68be376f837b
-          APPLE_TEAM_ID:  ${{ secrets.APPLE_TEAM_ID }}     # 10-char Team ID
+          ASC_APP_ID:    ${{ secrets.ASC_APP_ID }}
+          ASC_KEY_ID:    ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
-
         run: |
-          # (Optional) sanity trim to avoid hidden whitespace/newlines in secrets
           trim () { printf "%s" "$1" | tr -d '\r\n\t '; }
           export ASC_APP_ID="$(trim "$ASC_APP_ID")"
           export ASC_KEY_ID="$(trim "$ASC_KEY_ID")"
           export ASC_ISSUER_ID="$(trim "$ASC_ISSUER_ID")"
           export APPLE_TEAM_ID="$(trim "$APPLE_TEAM_ID")"
 
-          # Quick client-side format checks
-          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]      || { echo "ASC_KEY_ID format bad"; exit 1; }
-          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10,12}$ ]]      || { echo "ASC_KEY_ID format bad"; exit 1; }
-          [[ "$ASC_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]]  || { echo "ASC_ISSUER_ID format bad"; exit 1; }
-          [[ "$ASC_APP_ID" =~ ^[0-9]+$ ]]            || { echo "ASC_APP_ID format bad"; exit 1; }
-          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]   || { echo "APPLE_TEAM_ID format bad"; exit 1; }
-          test -f "$EXPO_ASC_API_KEY_PATH"           || { echo "asc.p8 not found at $EXPO_ASC_API_KEY_PATH"; exit 1; }
+          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10,12}$ ]]  || { echo "ASC_KEY_ID format bad"; exit 1; }
+          [[ "$ASC_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]] || { echo "ASC_ISSUER_ID format bad"; exit 1; }
+          [[ "$ASC_APP_ID" =~ ^[0-9]+$ ]]           || { echo "ASC_APP_ID format bad"; exit 1; }
+          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]  || { echo "APPLE_TEAM_ID format bad"; exit 1; }
+          test -f "$EXPO_ASC_API_KEY_PATH"           || { echo "asc.p8 not found"; exit 1; }
 
-          # Show the resolved config (masked) so we can confirm the submit profile is picked up
           eas config --platform ios --profile preview
 
-          # Submit using the submit profile (no unsupported flags)
           eas submit -p ios \
             --path build.ipa \
             --profile preview \
             --non-interactive --verbose
-
-
-
