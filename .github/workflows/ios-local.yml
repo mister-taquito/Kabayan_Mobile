@@ -52,24 +52,11 @@ jobs:
         working-directory: project-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          ASC_APP_ID:    ${{ secrets.ASC_APP_ID }}
-          ASC_KEY_ID:    ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
+          ASC_APP_ID:            ${{ secrets.ASC_APP_ID }}
+          ASC_KEY_ID:            ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID:         ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID:         ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          trim () { printf "%s" "$1" | tr -d '\r\n\t '; }
-          export ASC_APP_ID="$(trim "$ASC_APP_ID")"
-          export ASC_KEY_ID="$(trim "$ASC_KEY_ID")"
-          export ASC_ISSUER_ID="$(trim "$ASC_ISSUER_ID")"
-          export APPLE_TEAM_ID="$(trim "$APPLE_TEAM_ID")"
-
-          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]{10,12}$ ]]  || { echo "ASC_KEY_ID format bad"; exit 1; }
-          [[ "$ASC_ISSUER_ID" =~ ^[0-9a-f-]{36}$ ]] || { echo "ASC_ISSUER_ID format bad"; exit 1; }
-          [[ "$ASC_APP_ID" =~ ^[0-9]+$ ]]           || { echo "ASC_APP_ID format bad"; exit 1; }
-          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]  || { echo "APPLE_TEAM_ID format bad"; exit 1; }
-          test -f "$EXPO_ASC_API_KEY_PATH"           || { echo "asc.p8 not found"; exit 1; }
-
           eas config --platform ios --profile preview
 
           eas submit -p ios \

@@ -9,11 +9,11 @@
   "submit": {
     "preview": {
       "ios": {
-        "ascAppId": "env:ASC_APP_ID",            
-        "ascApiKeyId": "env:ASC_KEY_ID",
-        "ascApiKeyIssuerId": "env:ASC_ISSUER_ID",
-        "ascApiKeyPath": "env:EXPO_ASC_API_KEY_PATH",
-        "appleTeamId": "env:APPLE_TEAM_ID"
+        "ascAppId": "6751611425",
+        "appleTeamId": "9ZCN58GB6F",
+        "ascApiKeyId": "Y2YI8PI1KJWG",
+        "ascApiKeyIssuerId": "f8d047c6-f1d2-431c-b772-68be376f837b",
+        "ascApiKeyPath": "asc.p8"
       }
     }
   }
