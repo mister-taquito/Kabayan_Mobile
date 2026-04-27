@@ -3,7 +3,7 @@ const { getDefaultConfig } = require('@expo/metro-config');
 // Create a completely custom config to bypass Expo's problematic defaults
 const config = {
   transformer: {
-    babelTransformerPath: require.resolve('metro-react-native-babel-transformer'),
+    babelTransformerPath: require.resolve(__dirname, 'metro-react-native-babel-transformer'),
     getTransformOptions: async () => ({
       transform: {
         experimentalImportSupport: false,
