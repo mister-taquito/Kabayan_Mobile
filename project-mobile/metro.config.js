@@ -1,21 +1,22 @@
-const { getDefaultConfig } = require('@expo/metro-config');
+const { MetroConfig } = require('metro-config');
 
-module.exports = (async () => {
-  const defaultConfig = await getDefaultConfig(__dirname);
-  
-  return {
-    ...defaultConfig,
-    resolver: {
-      ...defaultConfig.resolver,
-    },
-    transformer: {
-      ...defaultConfig.transformer,
-    },
-    serializer: {
-      ...defaultConfig.serializer,
-    },
-    server: {
-      ...defaultConfig.server,
-    },
-  };
-});
+const config = {
+  transformer: {
+    getTransformOptions: () => ({
+      transform: {
+        experimentalImportSupport: false,
+        inlineRequires: true,
+      },
+    }),
+  },
+  resolver: {
+    assetExts: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
+    sourceExts: ['js', 'jsx', 'ts', 'tsx', 'json'],
+  },
+  watchFolders: ['node_modules'],
+  server: {
+    port: process.env.METRO_PORT || 8081,
+  },
+};
+
+module.exports = config;
