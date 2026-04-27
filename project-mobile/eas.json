@@ -3,31 +3,19 @@
   "build": {
     "development": { 
       "environment": "development", 
-      "node": "18.18.2",
-      "ios": {
-        "sdkVersion": "26.0.0"
-      }
+      "node": "18.18.2"
     },
     "preview": { 
       "environment": "preview", 
-      "node": "18.18.2",
-      "ios": {
-        "sdkVersion": "26.0.0"
-      }
+      "node": "18.18.2"
     },
     "production": { 
       "environment": "production", 
-      "node": "18.18.2",
-      "ios": {
-        "sdkVersion": "26.0.0"
-      }
+      "node": "18.18.2"
     },
     "my-profile": { 
       "environment": "production", 
-      "node": "18.18.2",
-      "ios": {
-        "sdkVersion": "26.0.0"
-      }
+      "node": "18.18.2"
     }
   },
   "submit": {
