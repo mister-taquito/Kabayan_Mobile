@@ -1,4 +1,4 @@
-name: ios-local-build
+name: ios-build-submit-legacy
 on:
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18.18.2
 
       - name: Install EAS CLI
         run: npm i -g eas-cli
@@ -23,17 +23,15 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Expo login (token)
-        run: eas login --token ${{ secrets.EXPO_TOKEN }}
+      - name: Verify Expo auth
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas whoami
 
-      - name: EAS local build (iOS)
-        run: eas build --platform ios --profile preview --local --non-interactive --output build.ipa
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: project-mobile/build.ipa
+      - name: Build iOS on EAS cloud
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform ios --profile preview --non-interactive --wait
 
       - name: Write ASC API key to file
         shell: bash
@@ -41,12 +39,15 @@ jobs:
           echo "${{ secrets.ASC_API_KEY_P8_BASE64 }}" | base64 --decode > asc.p8
 
       - name: Submit to TestFlight
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/project-mobile/asc.p8
         run: |
           eas submit -p ios \
-            --path build.ipa \
-            --asc-app-id "${{ secrets.ASC_APP_ID }}" \
-            --issuer-id "${{ secrets.ASC_ISSUER_ID }}" \
-            --key-id "${{ secrets.ASC_KEY_ID }}" \
-            --asc-api-key-path asc.p8 \
-            --apple-team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --latest \
+            --profile preview \
             --non-interactive --verbose

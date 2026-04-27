@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   FlatList,
@@ -14,6 +13,7 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { shopifyRequest } from '../lib/shopify';
 import { GET_PRODUCTS_BY_COLLECTION_BY_HANDLE } from '../lib/shopify/queries/products-by-collection-by-handle';
 import { Header } from '../components/Header';
@@ -126,6 +126,7 @@ export default function CategoryScreen({ route, navigation }: Props) {
             const node: ShopifyProduct = edge.node;
             return {
               id:     node.id,
+              variantId: node.variants.edges[0].node.id,
               name:   node.title,
               handle: node.handle,
               image:  node.featuredImage?.url || '',
@@ -265,19 +266,19 @@ export default function CategoryScreen({ route, navigation }: Props) {
                   setCurrentHandle(cat.handle);
                 }
               }}
+              activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  {
-                    fontSize:   16,       // slightly larger than Typography.label
-                    fontWeight: isActive ? '700' : '500',
-                    color:      isActive ? Colors.background : Colors.primary,
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                {cat.title}
-              </Text>
+              <View style={styles.categoryTabContent}>
+                <Text
+                  style={[
+                    styles.categoryTabText,
+                    isActive && styles.categoryTabTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {cat.title}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -393,18 +394,39 @@ const styles = StyleSheet.create({
   // 12b) Each tab item: larger padding + minWidth so they’re easy to see and tap
   //
   categoryTabItem: {
-    marginRight:       Spacing.md,
-    paddingVertical:   Spacing.md,   // ≈16px vertical padding
-    paddingHorizontal: Spacing.lg,   // ≈24px horizontal padding
-    minWidth:          100,          // ensures each tab is wide enough
-    borderRadius:      20,
-    backgroundColor:   Colors.background,
-    borderWidth:       1,
-    borderColor:       Colors.primary,
+    height:           40,
+    minWidth:          100,
+    paddingHorizontal: Spacing.md,
+    borderRadius:      8,
+    backgroundColor:   Colors.backgroundAlt,
+    borderWidth:       0,
+    marginHorizontal:  Spacing.xs,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
   },
   categoryTabItemActive: {
-    backgroundColor: Colors.primary,
-    borderColor:     Colors.primary,
+    backgroundColor: Colors.background,
+    borderBottomColor: Colors.primary,
+    borderBottomWidth: 3,
+  },
+
+  //
+  // 12b-extended) Enhanced tab content styles
+  //
+  categoryTabContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  categoryTabText: {
+    fontSize:   14,
+    fontWeight: '500',
+    color:      Colors.textMuted,
+    textAlign: 'center',
+  },
+  categoryTabTextActive: {
+    color: Colors.primary,
+    fontWeight: '600',
   },
 
   //

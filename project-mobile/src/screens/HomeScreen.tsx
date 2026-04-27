@@ -1,8 +1,7 @@
 // src/screens/HomeScreen.tsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   View,
   Text,
@@ -11,18 +10,22 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { shopifyRequest }    from '../api/shopify';
 import { GET_HOME_PRODUCTS } from '../api/queries';
 import { Header }            from '../components/Header';
 import { ProductCard, Product }  from '../components/ProductCard';
+import { SkeletonCard, SkeletonList, SkeletonCategory } from '../components/SkeletonLoader';
+import { ErrorView, NetworkError, EmptyState } from '../components/ErrorView';
+import { AnimatedButton } from '../components/AnimatedButton';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootTabParamList }       from '../navigation/AppNavigator';
 
 // Theme imports
-import { Colors, Typography, Spacing, CommonStyles } from '../styles/Theme';
+import { Colors, Typography, Spacing, CommonStyles, Animations } from '../styles/Theme';
 
 type HomeProps = BottomTabScreenProps<RootTabParamList, 'Home'>;
 
@@ -43,47 +46,92 @@ export default function HomeScreen({ navigation }: HomeProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data: any = await shopifyRequest(GET_HOME_PRODUCTS);
-        const mapped: Product[] = data.products.edges.map((edge: any) => {
-          const node = edge.node;
-          return {
-            id:     node.id,
-            name:   node.title,
-            image:  node.featuredImage?.url || '',
-            price:  parseFloat(node.variants.edges[0].node.price.amount),
-            handle: node.handle,
-          };
-        });
-        setProducts(mapped);
-      } catch (err) {
-        console.error('Shopify fetch error', err);
-        setError('Unable to load products. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const fetchProducts = useCallback(async () => {
+    try {
+      const data: any = await shopifyRequest(GET_HOME_PRODUCTS);
+      const mapped: Product[] = data.products.edges.map((edge: any) => {
+        const node = edge.node;
+        return {
+          id:     node.id,
+          variantId: node.variants.edges[0].node.id,
+          name:   node.title,
+          image:  node.featuredImage?.url || '',
+          price:  parseFloat(node.variants.edges[0].node.price.amount),
+          handle: node.handle,
+        };
+      });
+      setProducts(mapped);
+      setError(null);
+    } catch (err) {
+      console.error('Shopify fetch error', err);
+      setError('Unable to load products. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  // Loading state
-  if (loading) {
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const handleRetry = useCallback(() => {
+    setLoading(true);
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Initial loading state
+  if (loading && products.length === 0) {
     return (
-      <SafeAreaView style={CommonStyles.centeredContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView style={styles.container}>
+        <Header />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero Skeleton */}
+          <View style={styles.heroWrapper}>
+            <View style={styles.skeletonHero} />
+          </View>
+
+          {/* Categories Skeleton */}
+          <View style={styles.categoryWrapper}>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <SkeletonCategory key={index} />
+            ))}
+          </View>
+
+          {/* New Arrivals Skeleton */}
+          <View style={styles.section}>
+            <View style={styles.skeletonSectionTitle} />
+            <SkeletonList count={3} horizontal />
+          </View>
+
+          {/* Trending Skeleton */}
+          <View style={styles.section}>
+            <View style={styles.skeletonSectionTitle} />
+            <SkeletonList count={3} horizontal />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   // Error state
-  if (error) {
+  if (error && products.length === 0) {
     return (
-      <SafeAreaView style={CommonStyles.centeredContainer}>
-        <Text style={[Typography.body, { color: Colors.error, textAlign: 'center' }]}>
-          {error}
-        </Text>
+      <SafeAreaView style={styles.container}>
+        <Header />
+        <View style={styles.errorContainer}>
+          <NetworkError onRetry={handleRetry} isRetrying={loading} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -98,6 +146,14 @@ export default function HomeScreen({ navigation }: HomeProps) {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
       >
         {/* Hero Banner (unclickable for now) */}
         <View style={styles.heroWrapper}>
@@ -137,13 +193,12 @@ export default function HomeScreen({ navigation }: HomeProps) {
             snapToInterval={CARD_WIDTH + Spacing.sm * 2}
             decelerationRate="fast"
             renderItem={({ item }) => (
-              <TouchableOpacity
+              <ProductCard
+                product={item}
                 onPress={() =>
                   navigation.getParent()?.navigate('ProductDetail', { handle: item.handle })
                 }
-              >
-                <ProductCard product={item} />
-              </TouchableOpacity>
+              />
             )}
           />
         </View>
@@ -160,13 +215,12 @@ export default function HomeScreen({ navigation }: HomeProps) {
             snapToInterval={CARD_WIDTH + Spacing.sm * 2}
             decelerationRate="fast"
             renderItem={({ item }) => (
-              <TouchableOpacity
+              <ProductCard
+                product={item}
                 onPress={() =>
                   navigation.getParent()?.navigate('ProductDetail', { handle: item.handle })
                 }
-              >
-                <ProductCard product={item} />
-              </TouchableOpacity>
+              />
             )}
           />
         </View>
@@ -227,5 +281,26 @@ const styles = StyleSheet.create({
 
   carousel: {
     paddingLeft: Spacing.md - 8,
+  },
+
+  // Skeleton styles
+  skeletonHero: {
+    width: IMAGE_WIDTH,
+    height: HERO_HEIGHT,
+    borderRadius: 16,
+    backgroundColor: Colors.borderLight,
+  },
+  skeletonSectionTitle: {
+    width: 150,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.borderLight,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

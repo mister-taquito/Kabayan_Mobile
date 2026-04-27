@@ -6,12 +6,14 @@ import {
   Text,
   FlatList,
   ActivityIndicator,
-  SafeAreaView,
   StyleSheet,
-  TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart, CartItem } from '../context/CartContext';
+import { CartItemComponent } from '../components/CartItem';
+import { EmptyState, NetworkError } from '../components/ErrorView';
+import { AnimatedButton } from '../components/AnimatedButton';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps }  from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -54,105 +56,28 @@ export default function CartScreen({ navigation }: CartTabProps) {
   //
   if (!loading && items.length === 0) {
     return (
-      <SafeAreaView style={CommonStyles.centeredContainer}>
-        <Text style={CommonStyles.emptyText}>Your cart is empty.</Text>
-        <TouchableOpacity
-          style={CommonStyles.primaryButton}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={CommonStyles.primaryButtonText}>Continue Shopping</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={styles.container}>
+        <EmptyState
+          icon="basket-outline"
+          title="Your cart is empty"
+          subtitle="Add some items to get started!"
+          action={{
+            text: "Continue Shopping",
+            onPress: () => navigation.navigate('Home'),
+          }}
+        />
       </SafeAreaView>
     );
   }
 
-  //
-  // 2) Render each cart item
-  //
+  // 2) Render each cart item using the enhanced component
   const renderItem = ({ item }: { item: CartItem }) => (
-    <View style={styles.itemRow}>
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.itemDetail}>Qty: {item.quantity}</Text>
-        <Text style={styles.itemDetail}>
-          {parseFloat(item.price.amount).toFixed(2)} {item.price.currencyCode}
-        </Text>
-      </View>
-
-      <View style={styles.itemControls}>
-        <TouchableOpacity
-          style={[
-            styles.controlButton,
-            (item.quantity <= 1 || isUpdating) && styles.controlButtonDisabled,
-          ]}
-          disabled={isUpdating || item.quantity <= 1}
-          onPress={async () => {
-            setIsUpdating(true);
-            setError(null);
-            try {
-              await updateItem(item.id, Math.max(1, item.quantity - 1));
-            } catch {
-              setError('Unable to update quantity. Try again.');
-            } finally {
-              setIsUpdating(false);
-            }
-          }}
-        >
-          <Text
-            style={[
-              styles.controlButtonText,
-              (item.quantity <= 1 || isUpdating) && styles.textDisabled,
-            ]}
-          >
-            –
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ width: Spacing.sm * 1.5 }} />
-
-        <TouchableOpacity
-          style={[styles.controlButton, isUpdating && styles.controlButtonDisabled]}
-          disabled={isUpdating}
-          onPress={async () => {
-            setIsUpdating(true);
-            setError(null);
-            try {
-              await updateItem(item.id, item.quantity + 1);
-            } catch {
-              setError('Unable to update quantity. Try again.');
-            } finally {
-              setIsUpdating(false);
-            }
-          }}
-        >
-          <Text style={[styles.controlButtonText, isUpdating && styles.textDisabled]}>
-            +
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ width: Spacing.sm * 1.5 }} />
-
-        <TouchableOpacity
-          style={styles.removeButton}
-          disabled={isUpdating}
-          onPress={async () => {
-            setIsUpdating(true);
-            setError(null);
-            try {
-              await removeItem(item.id);
-            } catch {
-              setError('Unable to remove item. Try again.');
-            } finally {
-              setIsUpdating(false);
-            }
-          }}
-        >
-          <Text style={styles.removeButtonText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <CartItemComponent
+      item={item}
+      onUpdateQuantity={updateItem}
+      onRemove={removeItem}
+      isUpdating={isUpdating}
+    />
   );
 
   return (
@@ -188,16 +113,15 @@ export default function CartScreen({ navigation }: CartTabProps) {
           </Text>
         )}
 
-        <TouchableOpacity
-          style={[
-            CommonStyles.primaryButton,
-            (!checkoutUrl || isUpdating) && CommonStyles.primaryButtonDisabled,
-          ]}
-          disabled={!checkoutUrl || isUpdating}
+        <AnimatedButton
+          title={isUpdating ? 'Processing...' : 'Checkout'}
           onPress={() => navigation.getParent()?.navigate('Checkout', { url: checkoutUrl ?? undefined })}
-        >
-          <Text style={CommonStyles.primaryButtonText}>Proceed to Checkout</Text>
-        </TouchableOpacity>
+          disabled={!checkoutUrl || isUpdating}
+          loading={isUpdating}
+          icon="arrow-forward-outline"
+          iconPosition="right"
+          style={{ marginTop: Spacing.sm }}
+        />
       </View>
 
       {/* 6) Overlay spinner for line updates */}

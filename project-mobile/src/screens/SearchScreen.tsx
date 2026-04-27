@@ -1,6 +1,6 @@
 // src/screens/SearchScreen.tsx
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   Keyboard,
+  Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { shopifyRequest } from '../api/shopify';
-import { GET_SEARCH_PRODUCTS } from '../api/queries';
+import { GET_SEARCH_PRODUCTS, GET_HOME_PRODUCTS } from '../api/queries';
 import { ProductCard, Product } from '../components/ProductCard';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -29,17 +30,50 @@ export default function SearchScreen({ navigation }: SearchProps) {
   const [results, setResults]     = useState<Product[]>([]);
   const [loading, setLoading]     = useState<boolean>(false);
   const [error, setError]         = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState<boolean>(false);
+  const [isSearchMode, setIsSearchMode] = useState<boolean>(false);
+
+  // Load default products on mount
+  useEffect(() => {
+    loadDefaultProducts();
+  }, []);
+
+  const loadDefaultProducts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data: any = await shopifyRequest(GET_HOME_PRODUCTS);
+      const edges = data.products.edges as any[];
+      const mapped: Product[] = edges.map((edge) => {
+        const node = edge.node;
+        return {
+          id:     node.id,
+          variantId: node.variants.edges[0].node.id,
+          name:   node.title,
+          handle: node.handle,
+          image:  node.featuredImage?.url || '',
+          price:  parseFloat(node.variants.edges[0].node.price.amount),
+        };
+      });
+      setResults(mapped);
+    } catch (e) {
+      console.error('Default products fetch failed', e);
+      setError('Unable to load products. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const onSearch = useCallback(async () => {
     // Dismiss keyboard
     Keyboard.dismiss();
     if (!query.trim()) {
-      setError('Please enter a search term.');
+      // If empty search, load default products
+      setIsSearchMode(false);
+      loadDefaultProducts();
       return;
     }
 
-    setHasSearched(true);
+    setIsSearchMode(true);
     setLoading(true);
     setError(null);
 
@@ -50,6 +84,7 @@ export default function SearchScreen({ navigation }: SearchProps) {
         const node = edge.node;
         return {
           id:     node.id,
+          variantId: node.variants.edges[0].node.id,
           name:   node.title,
           handle: node.handle,
           image:  node.featuredImage?.url || '',
@@ -63,7 +98,7 @@ export default function SearchScreen({ navigation }: SearchProps) {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [query, loadDefaultProducts]);
 
   const renderItem = ({ item }: { item: Product }) => (
     <TouchableOpacity
@@ -102,10 +137,10 @@ export default function SearchScreen({ navigation }: SearchProps) {
         </View>
       )}
 
-      {!loading && !error && hasSearched && results.length === 0 && (
+      {!loading && !error && isSearchMode && results.length === 0 && (
         <View style={CommonStyles.centeredContainer}>
           <Text style={[Typography.body, { color: Colors.textMuted }]}>
-            No results found for “{query}”.
+            No results found for "{query}".
           </Text>
         </View>
       )}
@@ -115,7 +150,10 @@ export default function SearchScreen({ navigation }: SearchProps) {
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </SafeAreaView>
@@ -158,5 +196,8 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: Spacing.md,
     paddingTop:        Spacing.sm,
+  },
+  row: {
+    justifyContent: 'space-between',
   },
 });

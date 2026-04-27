@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   Switch,
@@ -11,6 +10,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, Typography, Spacing, CommonStyles } from '../styles/Theme';
 

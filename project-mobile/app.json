@@ -3,6 +3,7 @@
     "name": "project-mobile",
     "slug": "project-mobile",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +18,9 @@
       "bundleIdentifier": "com.jabeecatto.projectmobile",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "1.0.0",
+      "sdkVersion": "26.0.0"
     },
     "android": {
       "adaptiveIcon": {
