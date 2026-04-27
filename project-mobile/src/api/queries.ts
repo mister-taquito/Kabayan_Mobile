@@ -12,7 +12,8 @@ export const GET_HOME_PRODUCTS = /* GraphQL */ `
           variants(first: 1) {
             edges {
               node {
-                price {       # ← change here
+                id
+                price {
                   amount
                   currencyCode
                 }
@@ -39,7 +40,8 @@ export const GET_PRODUCTS_BY_COLLECTION = /* GraphQL */ `
             variants(first: 1) {
               edges {
                 node {
-                  price {  # ← and here
+                  id
+                  price {
                     amount
                     currencyCode
                   }
@@ -92,6 +94,7 @@ export const GET_SEARCH_PRODUCTS = /* GraphQL */ `
           variants(first: 1) {
             edges {
               node {
+                id
                 price {
                   amount
                   currencyCode

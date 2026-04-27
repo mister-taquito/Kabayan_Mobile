@@ -90,10 +90,10 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 function mapLinesToItems(lines: CartLineNode[]): CartItem[] {
   return lines.map((n) => ({
     id: n.id,
-    // Prefer "Product title – Variant title" for clarity
+    // Prefer "Product title – Variant title" for clarity, but avoid "default Item"
     title: n.merchandise?.product?.title
-      ? `${n.merchandise.product.title} — ${n.merchandise.title}`
-      : n.merchandise.title,
+      ? `${n.merchandise.product.title}${n.merchandise.title && n.merchandise.title !== 'Default Title' ? ` — ${n.merchandise.title}` : ''}`
+      : (n.merchandise.title && n.merchandise.title !== 'Default Title' ? n.merchandise.title : 'Product'),
     quantity: n.quantity,
     // Use amountPerQuantity as the unit price; fall back to merchandise.price if your fragment includes it
     price: n.cost?.amountPerQuantity ?? (n.merchandise.price as Money),

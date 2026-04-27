@@ -40,9 +40,8 @@ const Tab   = createBottomTabNavigator<RootTabParamList>();
 /** Cart icon with live badge (sum of line quantities) */
 function CartTabIcon({ color }: { color: string }) {
   // swap to `useCart()` if that's your hook name
-  const { cart } = useCart();
-  const count =
-    cart?.lines?.edges?.reduce((sum: number, e: any) => sum + (e?.node?.quantity ?? 0), 0) ?? 0;
+  const { items } = useCart();
+  const count = items.reduce((sum: number, item) => sum + item.quantity, 0);
 
   return (
     <View style={{ width: 30, height: 28, alignItems: 'center', justifyContent: 'center' }}>
