@@ -28,8 +28,8 @@ jobs:
 
       - name: Verify app.json buildNumber
         run: |
-          cat project-mobile/app.json
-          if ! grep -q '"buildNumber": "3"' project-mobile/app.json; then
+          cat app.json
+          if ! grep -q '"buildNumber": "3"' app.json; then
             echo "ERROR: buildNumber is not 3 in app.json"
             exit 1
           fi
