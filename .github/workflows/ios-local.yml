@@ -26,6 +26,15 @@ jobs:
       - name: Verify Expo auth
         run: eas whoami
 
+      - name: Verify app.json buildNumber
+        run: |
+          cat project-mobile/app.json
+          if ! grep -q '"buildNumber": "3"' project-mobile/app.json; then
+            echo "ERROR: buildNumber is not 3 in app.json"
+            exit 1
+          fi
+          echo "✓ buildNumber is 3"
+
       - name: EAS local build (iOS)
         run: eas build --platform ios --profile preview --local --non-interactive --output build.ipa
 
