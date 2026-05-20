@@ -1,5 +1,5 @@
 {
-  "cli": { "appVersionSource": "remote" },
+  "cli": { "appVersionSource": "local" },
   "build": {
     "development": { 
       "environment": "development", 
